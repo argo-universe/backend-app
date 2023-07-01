@@ -1,0 +1,45 @@
+name: Frontend App
+
+env:
+  APP_NAME: backend-app
+  IMAGE_TAG: "dev-${{github.run_number}}"
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - feature-*
+
+jobs:
+  buildAndDeploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Checkout app-configs repository
+        uses: actions/checkout@v2
+        with:
+          repository: argo-universe/app-configs
+          ref: main
+          token: ${{ secrets.GIT_PAT }}
+          path: app-configs
+
+      - name: Run build script
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          IMAGE_NAME: ${{ env.APP_NAME }}
+        run: | 
+          chmod +x app-configs/scripts/build.sh
+          app-configs/scripts/build.sh
+
+      - name: Run image tag script
+        env: 
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          ENV: dev
+          APP_NAME: ${{ env.APP_NAME }}
+        run: | 
+          chmod +x app-configs/scripts/update_imagetag.sh
+          app-configs/scripts/update_imagetag.sh
