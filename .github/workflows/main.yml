@@ -1,23 +1,35 @@
-name: Frontend App
-
-env:
-  APP_NAME: backend-app
-  IMAGE_TAG: "dev-${{github.run_number}}"
+name: Backend App CI/CD
 
 on:
   push:
     branches:
       - main
-      - dev
-      - feature-*
+    tags:
+      - 'dev-[0-9].[0-9].[0-9]'
+      - 'prod-[0-9].[0-9].[0-9]'
   workflow_dispatch:
-    
+
+env:
+  APP_NAME: backend-app
+
 jobs:
   buildAndDeploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Determine Environment and Image Tag
+        id: env-image-tag
+        run: |
+          if [[ $GITHUB_REF == refs/tags/prod-* ]]; then
+            echo "ENV=prod" >> $GITHUB_ENV
+            echo "IMAGE_TAG=prod-${{github.run_number}}" >> $GITHUB_ENV
+          else
+            echo "ENV=dev" >> $GITHUB_ENV
+            echo "IMAGE_TAG=dev-${{github.run_number}}" >> $GITHUB_ENV
+          fi
+
       - name: Checkout app-configs repository
         uses: actions/checkout@v2
         with:
@@ -26,7 +38,7 @@ jobs:
           token: ${{ secrets.GIT_PAT }}
           path: app-configs
 
-      - name: Run build script
+      - name: Build and Push Docker image
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
@@ -35,6 +47,7 @@ jobs:
         run: | 
           chmod +x app-configs/scripts/build.sh
           app-configs/scripts/build.sh
+
       - name: Install Trivy
         run: |
           TRIVY_LATEST_RELEASE=$(curl -s https://api.github.com/repos/aquasecurity/trivy/releases/latest | grep "browser_download_url.*_Linux-64bit.deb" | cut -d '"' -f 4 | head -n 1)
@@ -45,11 +58,11 @@ jobs:
         run: |
           IMAGE_TAG="argouniverse/${{ env.APP_NAME }}:${{ env.IMAGE_TAG }}"
           trivy image --exit-code 1 --no-progress $IMAGE_TAG || true
-          
-      - name: Run image tag script
+
+      - name: Update Image Tag
         env: 
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
-          ENV: dev
+          ENV: ${{ env.ENV }}
           APP_NAME: ${{ env.APP_NAME }}
         run: | 
           chmod +x app-configs/scripts/update_imagetag.sh
