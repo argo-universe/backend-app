@@ -34,7 +34,17 @@ jobs:
         run: | 
           chmod +x app-configs/scripts/build.sh
           app-configs/scripts/build.sh
+      - name: Install Trivy
+        run: |
+          TRIVY_LATEST_RELEASE=$(curl -s https://api.github.com/repos/aquasecurity/trivy/releases/latest | grep "browser_download_url.*_Linux-64bit.deb" | cut -d '"' -f 4 | head -n 1)
+          wget "$TRIVY_LATEST_RELEASE" -O trivy.deb
+          sudo dpkg -i trivy.deb
 
+      - name: Scan Docker image for vulnerabilities
+        run: |
+          IMAGE_TAG="argouniverse/${{ env.APP_NAME }}:${{ env.IMAGE_TAG }}"
+          trivy image --exit-code 1 --no-progress $IMAGE_TAG || true
+          
       - name: Run image tag script
         env: 
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
