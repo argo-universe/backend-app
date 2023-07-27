@@ -10,7 +10,8 @@ on:
       - main
       - dev
       - feature-*
-
+  workflow_dispatch:
+    
 jobs:
   buildAndDeploy:
     runs-on: ubuntu-latest
