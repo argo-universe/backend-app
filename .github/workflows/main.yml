@@ -48,6 +48,7 @@ jobs:
           chmod +x app-configs/scripts/build.sh
           app-configs/scripts/build.sh
 
+
       - name: Update Image Tag
         env: 
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
